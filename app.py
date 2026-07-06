@@ -7,8 +7,153 @@ import requests
 from io import BytesIO
 
 st.set_page_config(page_title="全銘柄スクリーニングツール", page_icon="📈", layout="wide")
-st.title("📈 全銘柄スクリーニングツール")
-st.caption("JPX全上場銘柄対応 ＋ RSI ＋ GC予兆 ＋ カップ＆ハンドル検知")
+
+# マトリックス風CSSスタイル
+st.markdown("""
+<style>
+/* 背景を黒に */
+.stApp {
+    background-color: #0a0a0a;
+    color: #00ff41;
+}
+
+/* サイドバー */
+[data-testid="stSidebar"] {
+    background-color: #0d0d0d;
+    border-right: 1px solid #00ff41;
+}
+[data-testid="stSidebar"] * {
+    color: #00ff41 !important;
+}
+
+/* メインタイトル */
+h1, h2, h3 {
+    color: #00ff41 !important;
+    text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+    font-family: 'Courier New', monospace;
+}
+
+/* キャプション */
+p, .stMarkdown {
+    color: #00cc33 !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* ボタン */
+.stButton > button {
+    background-color: #001a00;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    box-shadow: 0 0 8px #00ff41;
+    transition: all 0.3s;
+}
+.stButton > button:hover {
+    background-color: #00ff41;
+    color: #000000;
+    box-shadow: 0 0 20px #00ff41;
+}
+
+/* プライマリボタン（スクリーニング実行） */
+.stButton > button[kind="primary"] {
+    background-color: #003300;
+    color: #00ff41;
+    border: 2px solid #00ff41;
+    box-shadow: 0 0 15px #00ff41;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* データフレーム */
+[data-testid="stDataFrame"] {
+    border: 1px solid #00ff41;
+    box-shadow: 0 0 10px #00ff41;
+}
+
+/* スライダー */
+.stSlider > div > div {
+    background-color: #00ff41;
+}
+
+/* インプット */
+.stTextInput input, .stTextArea textarea, .stNumberInput input {
+    background-color: #001100;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    font-family: 'Courier New', monospace;
+}
+
+/* セレクトボックス */
+.stSelectbox > div > div {
+    background-color: #001100;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+}
+
+/* 成功メッセージ */
+.stSuccess {
+    background-color: #001a00;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+}
+
+/* 情報メッセージ */
+.stInfo {
+    background-color: #001100;
+    border: 1px solid #00cc33;
+    color: #00cc33;
+}
+
+/* 警告メッセージ */
+.stWarning {
+    background-color: #1a1100;
+    border: 1px solid #ffcc00;
+    color: #ffcc00;
+}
+
+/* expander */
+.streamlit-expanderHeader {
+    background-color: #001100;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+}
+
+/* チェックボックス */
+.stCheckbox > label {
+    color: #00ff41;
+}
+
+/* プログレスバー */
+.stProgress > div > div {
+    background-color: #00ff41;
+}
+
+/* スクロールバー */
+::-webkit-scrollbar {
+    width: 5px;
+}
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+    background: #00ff41;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ヘッダー部分
+st.markdown("""
+<div style='text-align: center; padding: 10px;'>
+    <h1 style='font-size: 2.5em; font-family: Courier New; color: #00ff41;
+    text-shadow: 0 0 10px #00ff41, 0 0 30px #00ff41, 0 0 50px #00ff41;'>
+    ⟨ 全銘柄スクリーニングツール ⟩
+    </h1>
+    <p style='color: #00cc33; font-family: Courier New;'>
+    &gt; JPX全上場銘柄対応 :: RSI :: GC予兆 :: カップ＆ハンドル検知_
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 with st.expander("📖 見方を見る（クリックで開く）"):
     st.markdown("""
