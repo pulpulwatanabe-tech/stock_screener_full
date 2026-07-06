@@ -37,9 +37,10 @@ def load_jpx_tickers():
         code_col = [c for c in df.columns if "コード" in str(c)][0]
         name_col = [c for c in df.columns if "銘柄名" in str(c)][0]
         market_col = [c for c in df.columns if "市場・商品区分" in str(c) or "市場" in str(c)][0]
-        df = df[[code_col, name_col, market_col]].dropna()
+        sector_col = [c for c in df.columns if "業種" in str(c)][0]
+        df = df[[code_col, name_col, market_col, sector_col]].dropna()
         df[code_col] = df[code_col].astype(str).str.zfill(4) + ".T"
-        df.columns = ["コード", "銘柄名", "市場"]
+        df.columns = ["コード", "銘柄名", "市場", "業種"]
         return df
     except Exception as e:
         st.error(f"JPX銘柄リスト取得エラー: {e}")
@@ -115,19 +116,6 @@ def detect_cup_and_handle(hist):
     except:
         return "-"
 
-SECTORS = {
-    "🔬 半導体・電子部品": "6857.T\n6920.T\n8035.T\n6146.T\n7735.T\n6526.T\n6723.T\n6981.T\n6762.T\n6976.T\n6963.T\n6971.T\n4063.T\n3436.T\n6506.T\n6594.T\n6645.T\n6806.T\n6770.T\n6724.T",
-    "🏦 銀行・金融": "8306.T\n8316.T\n8411.T\n8308.T\n8309.T\n8604.T\n8601.T\n8355.T\n8354.T\n8591.T\n8593.T\n8697.T\n8725.T\n8750.T\n8766.T\n8795.T\n8630.T",
-    "🚗 自動車・輸送機器": "7203.T\n7267.T\n7269.T\n7270.T\n7201.T\n7202.T\n7261.T\n7272.T\n7205.T\n7211.T\n6902.T\n7309.T",
-    "🏢 商社": "8058.T\n8031.T\n8001.T\n8053.T\n8002.T\n8015.T\n2768.T",
-    "💊 医薬品・ヘルスケア": "4502.T\n4503.T\n4568.T\n4519.T\n4523.T\n4507.T\n4151.T\n4578.T\n4506.T\n4543.T\n4581.T\n4480.T",
-    "📱 通信・IT": "9432.T\n9433.T\n9434.T\n9984.T\n9613.T\n4689.T\n4704.T\n4751.T\n4755.T\n2413.T\n2432.T\n6098.T\n4324.T\n9468.T\n4385.T\n6532.T\n4478.T",
-    "🏠 不動産・建設": "1925.T\n1928.T\n3289.T\n1801.T\n1802.T\n1803.T\n1812.T\n1808.T\n1963.T",
-    "🍜 食品・飲料": "2802.T\n2801.T\n2503.T\n2502.T\n2501.T\n2914.T\n2282.T\n2002.T\n2269.T\n2871.T\n4452.T\n4911.T",
-    "⚡ エネルギー・素材": "5001.T\n5019.T\n1605.T\n5401.T\n5411.T\n5406.T\n5713.T\n5802.T\n4063.T\n4188.T\n4005.T\n5108.T",
-    "🎮 エンタメ・小売": "7974.T\n9766.T\n7832.T\n9697.T\n4661.T\n9602.T\n3382.T\n8267.T\n9983.T\n3092.T\n7453.T\n9843.T\n7532.T\n7564.T",
-}
-
 st.sidebar.header("⚙️ スクリーニング条件")
 rsi_max = st.sidebar.slider("RSI上限（以下を抽出）", 10, 70, 30)
 
@@ -149,6 +137,7 @@ jpx_df = load_jpx_tickers()
 if jpx_df is not None:
     st.sidebar.success(f"✅ JPXより{len(jpx_df)}銘柄取得済み")
 
+    # 銘柄名検索
     st.sidebar.markdown("**🔎 銘柄名で検索**")
     search_word = st.sidebar.text_input("銘柄名またはコードで検索", placeholder="例：JX金属、トヨタ、6758")
     if search_word:
@@ -168,6 +157,7 @@ if jpx_df is not None:
         else:
             st.sidebar.warning("該当する銘柄が見つかりませんでした")
 
+    # 市場で絞り込み
     markets = ["すべて"] + sorted(jpx_df["市場"].unique().tolist())
     selected_market = st.sidebar.selectbox("市場で絞り込み", markets)
     if st.sidebar.button("📊 選択した市場の銘柄をセット"):
@@ -177,15 +167,20 @@ if jpx_df is not None:
             tickers_list = jpx_df[jpx_df["市場"] == selected_market]["コード"].tolist()
         st.session_state["tickers_input"] = "\n".join(tickers_list)
         st.rerun()
+
+    # 業種で絞り込み（JPX自動分類）
+    st.sidebar.markdown("**🏭 業種別プリセット**")
+    sectors = sorted(jpx_df["業種"].unique().tolist())
+    selected_sector = st.sidebar.selectbox("業種を選択", ["選択してください"] + sectors)
+    if st.sidebar.button("🏭 選択した業種の銘柄をセット"):
+        if selected_sector != "選択してください":
+            tickers_list = jpx_df[jpx_df["業種"] == selected_sector]["コード"].tolist()
+            st.session_state["tickers_input"] = "\n".join(tickers_list)
+            st.sidebar.success(f"{len(tickers_list)}銘柄をセットしました！")
+            st.rerun()
+
 else:
     st.sidebar.error("JPX銘柄リストの取得に失敗しました")
-
-st.sidebar.markdown("**セクター別プリセット**")
-cols = st.sidebar.columns(2)
-for i, sector_name in enumerate(SECTORS.keys()):
-    if cols[i % 2].button(sector_name, key=f"sector_{i}"):
-        st.session_state["tickers_input"] = SECTORS[sector_name]
-        st.rerun()
 
 default_tickers = "7203.T\n6758.T\n9984.T\n6861.T\n8306.T\n7974.T\n6902.T\n9432.T"
 tickers_input = st.sidebar.text_area(
