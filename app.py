@@ -249,8 +249,8 @@ if st.button("🔍 スクリーニング実行", type="primary"):
                 "RSI": round(rsi_val, 1),
                 "GC予兆": gc_label,
                 "C&H予兆": ch_label,
-                "乖離率(%)": gap_pct if gap_pct else "-",
-                "縮小スピード": slope if slope else "-",
+                "乖離率(%)": str(round(gap_pct, 2)) if gap_pct is not None else "-",
+                "縮小スピード": str(round(slope, 3)) if slope is not None else "-",
                 "推定GC日数": est_days if est_days else 999,
                 "出来高": int(volume_val) if volume_val else 0,
             })
