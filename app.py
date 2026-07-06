@@ -37,8 +37,7 @@ def load_jpx_tickers():
         code_col = [c for c in df.columns if "コード" in str(c)][0]
         name_col = [c for c in df.columns if "銘柄名" in str(c)][0]
         market_col = [c for c in df.columns if "市場・商品区分" in str(c) or "市場" in str(c)][0]
-        sector_col = [c for c in df.columns if "業種" in str(c)][0]
-        df = df[[code_col, name_col, market_col, sector_col]].dropna()
+        df = df[[code_col, name_col, market_col, "17業種区分"]].dropna()
         df[code_col] = df[code_col].astype(str).str.zfill(4) + ".T"
         df.columns = ["コード", "銘柄名", "市場", "業種"]
         return df
@@ -137,7 +136,6 @@ jpx_df = load_jpx_tickers()
 if jpx_df is not None:
     st.sidebar.success(f"✅ JPXより{len(jpx_df)}銘柄取得済み")
 
-    # 銘柄名検索
     st.sidebar.markdown("**🔎 銘柄名で検索**")
     search_word = st.sidebar.text_input("銘柄名またはコードで検索", placeholder="例：JX金属、トヨタ、6758")
     if search_word:
@@ -157,7 +155,6 @@ if jpx_df is not None:
         else:
             st.sidebar.warning("該当する銘柄が見つかりませんでした")
 
-    # 市場で絞り込み
     markets = ["すべて"] + sorted(jpx_df["市場"].unique().tolist())
     selected_market = st.sidebar.selectbox("市場で絞り込み", markets)
     if st.sidebar.button("📊 選択した市場の銘柄をセット"):
@@ -168,7 +165,6 @@ if jpx_df is not None:
         st.session_state["tickers_input"] = "\n".join(tickers_list)
         st.rerun()
 
-    # 業種で絞り込み（JPX自動分類）
     st.sidebar.markdown("**🏭 業種別プリセット**")
     sectors = sorted(jpx_df["業種"].unique().tolist())
     selected_sector = st.sidebar.selectbox("業種を選択", ["選択してください"] + sectors)
