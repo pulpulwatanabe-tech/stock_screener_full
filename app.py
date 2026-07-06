@@ -14,14 +14,6 @@ st.markdown("""
     background-color: #0a0a0a;
     color: #00ff41;
 }
-[data-testid="stSidebar"] {
-    background-color: #0d0d0d;
-    border-right: 1px solid #00ff41;
-}
-[data-testid="stSidebar"] * {
-    color: #00ff41 !important;
-    text-shadow: none !important;
-}
 h1, h2, h3 {
     color: #00ff41 !important;
     text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
@@ -39,6 +31,7 @@ p, .stMarkdown {
     font-family: 'Courier New', monospace;
     box-shadow: 0 0 8px #00ff41;
     transition: all 0.3s;
+    width: 100%;
 }
 .stButton > button:hover {
     background-color: #00ff41;
@@ -48,9 +41,6 @@ p, .stMarkdown {
 [data-testid="stDataFrame"] {
     border: 1px solid #00ff41;
     box-shadow: 0 0 10px #00ff41;
-}
-.stSlider > div > div {
-    background-color: #00ff41;
 }
 .stSlider label, .stSlider p,
 [data-testid="stSlider"] * {
@@ -68,65 +58,44 @@ p, .stMarkdown {
     color: #00ff41;
     border: 1px solid #00ff41;
 }
-.stSuccess {
-    background-color: #001a00;
-    border: 1px solid #00ff41;
-    color: #00ff41;
-}
-.stInfo {
-    background-color: #001100;
-    border: 1px solid #00cc33;
-    color: #00cc33;
-}
-.stWarning {
-    background-color: #1a1100;
-    border: 1px solid #ffcc00;
-    color: #ffcc00;
-}
-.streamlit-expanderHeader {
-    background-color: #001100;
-    color: #00ff41;
-    border: 1px solid #00ff41;
-}
-.stCheckbox > label {
-    color: #00ff41;
-}
-.stProgress > div > div {
-    background-color: #00ff41;
-}
+.stCheckbox > label { color: #00ff41; }
+.stProgress > div > div { background-color: #00ff41; }
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: #0a0a0a; }
 ::-webkit-scrollbar-thumb { background: #00ff41; }
+div[data-testid="stExpander"] {
+    border: 1px solid #00ff41;
+    background-color: #001100;
+}
+label { color: #00ff41 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div style='text-align: center; padding: 10px;'>
-    <h1 style='font-size: 2.5em; font-family: Courier New; color: #00ff41;
-    text-shadow: 0 0 10px #00ff41, 0 0 30px #00ff41, 0 0 50px #00ff41;'>
+    <h1 style='font-size: 2em; font-family: Courier New; color: #00ff41;
+    text-shadow: 0 0 10px #00ff41, 0 0 30px #00ff41;'>
     ⟨ 全銘柄スクリーニングツール ⟩
     </h1>
-    <p style='color: #00cc33; font-family: Courier New;'>
-    &gt; JPX全上場銘柄対応 :: RSI :: GC予兆 :: カップ＆ハンドル検知_
+    <p style='color: #00cc33; font-family: Courier New; font-size: 0.85em;'>
+    &gt; JPX全上場銘柄対応 :: RSI :: GC予兆 :: C&H検知_
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-with st.expander("📖 見方を見る（クリックで開く）"):
+with st.expander("📖 見方を見る（タップで開く）"):
     st.markdown("""
 | 項目 | 意味 | 目安 |
 |---|---|---|
-| **RSI** | 売られすぎ・買われすぎを示す指標（0〜100） | 30以下が買いサイン候補 |
-| **GC予兆** | 短期移動平均線が長期線に近づいている状態 | 「約◯日後」が小さいほど近い |
-| **乖離率(%)** | 短期線と長期線の差（マイナス=短期線が下） | 0に近いほどGCが近い |
+| **RSI** | 売られすぎ・買われすぎ（0〜100） | 30以下が買いサイン候補 |
+| **GC予兆** | 短期線が長期線に近づいている | 「約◯日後」が小さいほど近い |
+| **乖離率(%)** | 短期線と長期線の差 | 0に近いほどGCが近い |
 | **縮小スピード** | 乖離率が縮まる速さ | 大きいほど勢いよく接近中 |
-| **C&H予兆** | カップ＆ハンドル形成中の可能性 | ◎が最有力候補 |
-| **出来高** | その日に取引された株数 | 多いほど注目されている |
+| **C&H予兆** | カップ＆ハンドル形成中 | ◎が最有力候補 |
+| **出来高** | その日の取引量 | 多いほど注目されている |
 
-**💡 組み合わせのポイント**
-- RSI30以下 ＋ GC予兆あり → 売られすぎから反転の可能性
-- C&H予兆◎ ＋ GC予兆あり → ブレイクアウト直前の有力候補
-- 乖離率が小さい ＋ 縮小スピードが大きい → GCが近い有力候補
+💡 RSI30以下＋GC予兆あり → 反転の可能性
+💡 C&H◎＋GC予兆あり → ブレイクアウト直前の有力候補
     """)
 
 @st.cache_data(ttl=60*60*24)
@@ -217,81 +186,99 @@ def detect_cup_and_handle(hist):
     except:
         return "-"
 
-st.sidebar.header("⚙️ スクリーニング条件")
-rsi_max = st.sidebar.slider("RSI上限（以下を抽出）", 10, 70, 30)
-
-st.sidebar.header("💴 株価帯フィルター")
-price_min = st.sidebar.number_input("最低株価（円）", value=0, step=100)
-price_max = st.sidebar.number_input("最高株価（円）", value=100000, step=1000)
-
-st.sidebar.header("🔔 GC予兆フィルター")
-gc_days_max = st.sidebar.slider("GC予測まで何営業日以内？", 5, 30, 15)
-gc_only = st.sidebar.checkbox("GC予兆銘柄のみ表示", value=False)
-
-st.sidebar.header("🏆 C&Hフィルター")
-ch_only = st.sidebar.checkbox("C&H予兆銘柄のみ表示", value=False)
-
-st.sidebar.header("📋 銘柄選択")
-
 jpx_df = load_jpx_tickers()
 
-if jpx_df is not None:
-    st.sidebar.success(f"✅ JPXより{len(jpx_df)}銘柄取得済み")
+# ===== 銘柄選択エリア =====
+st.markdown("### 📋 銘柄選択")
 
-    st.sidebar.markdown("**🔎 銘柄名で検索**")
-    search_word = st.sidebar.text_input("銘柄名またはコードで検索", placeholder="例：JX金属、トヨタ、6758")
+if jpx_df is not None:
+    st.success(f"✅ JPXより{len(jpx_df)}銘柄取得済み")
+
+    # 銘柄名検索
+    st.markdown("**🔎 銘柄名で検索**")
+    search_word = st.text_input("銘柄名またはコードで検索", placeholder="例：JX金属、トヨタ、6758")
     if search_word:
         matched = jpx_df[
             jpx_df["銘柄名"].str.contains(search_word, na=False) |
             jpx_df["コード"].str.contains(search_word, na=False)
         ]
         if not matched.empty:
-            for _, row in matched.head(10).iterrows():
+            cols = st.columns(2)
+            for idx, (_, row) in enumerate(matched.head(10).iterrows()):
                 label = f"{row['コード']} {row['銘柄名']}"
-                if st.sidebar.button(label, key=f"search_{row['コード']}"):
+                if cols[idx % 2].button(label, key=f"search_{row['コード']}"):
                     current = st.session_state.get("tickers_input", "")
                     tickers_set = set(current.strip().split("\n")) if current.strip() else set()
                     tickers_set.add(row["コード"])
                     st.session_state["tickers_input"] = "\n".join(sorted(tickers_set))
                     st.rerun()
         else:
-            st.sidebar.warning("該当する銘柄が見つかりませんでした")
+            st.warning("該当する銘柄が見つかりませんでした")
 
-    markets = ["すべて"] + sorted(jpx_df["市場"].unique().tolist())
-    selected_market = st.sidebar.selectbox("市場で絞り込み", markets)
-    if st.sidebar.button("📊 選択した市場の銘柄をセット"):
-        if selected_market == "すべて":
-            tickers_list = jpx_df["コード"].tolist()
-        else:
-            tickers_list = jpx_df[jpx_df["市場"] == selected_market]["コード"].tolist()
-        st.session_state["tickers_input"] = "\n".join(tickers_list)
-        st.rerun()
-
-    st.sidebar.markdown("**🏭 業種別プリセット**")
-    sectors = sorted(jpx_df["業種"].unique().tolist())
-    selected_sector = st.sidebar.selectbox("業種を選択", ["選択してください"] + sectors)
-    if st.sidebar.button("🏭 選択した業種の銘柄をセット"):
-        if selected_sector != "選択してください":
-            tickers_list = jpx_df[jpx_df["業種"] == selected_sector]["コード"].tolist()
+    # 市場・業種選択
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**📊 市場で絞り込み**")
+        markets = ["すべて"] + sorted(jpx_df["市場"].unique().tolist())
+        selected_market = st.selectbox("市場を選択", markets, label_visibility="collapsed")
+        if st.button("📊 市場の銘柄をセット"):
+            if selected_market == "すべて":
+                tickers_list = jpx_df["コード"].tolist()
+            else:
+                tickers_list = jpx_df[jpx_df["市場"] == selected_market]["コード"].tolist()
             st.session_state["tickers_input"] = "\n".join(tickers_list)
-            st.sidebar.success(f"{len(tickers_list)}銘柄をセットしました！")
             st.rerun()
 
-else:
-    st.sidebar.error("JPX銘柄リストの取得に失敗しました")
+    with col2:
+        st.markdown("**🏭 業種で絞り込み**")
+        sectors = sorted(jpx_df["業種"].unique().tolist())
+        selected_sector = st.selectbox("業種を選択", ["選択してください"] + sectors, label_visibility="collapsed")
+        if st.button("🏭 業種の銘柄をセット"):
+            if selected_sector != "選択してください":
+                tickers_list = jpx_df[jpx_df["業種"] == selected_sector]["コード"].tolist()
+                st.session_state["tickers_input"] = "\n".join(tickers_list)
+                st.rerun()
 
+else:
+    st.error("JPX銘柄リストの取得に失敗しました")
+
+# ウォッチリスト
+st.markdown("**📝 ウォッチリスト（直接入力も可）**")
 default_tickers = "7203.T\n6758.T\n9984.T\n6861.T\n8306.T\n7974.T\n6902.T\n9432.T"
-tickers_input = st.sidebar.text_area(
-    "銘柄コードを1行ずつ入力（.T = 東証）",
+tickers_input = st.text_area(
+    "銘柄コード",
     value=st.session_state.get("tickers_input", default_tickers),
-    height=150,
+    height=120,
+    label_visibility="collapsed",
     key="tickers_input"
 )
 
 ticker_count = len([t for t in tickers_input.strip().split("\n") if t.strip()])
 if ticker_count > 500:
-    st.sidebar.warning(f"⚠️ {ticker_count}銘柄は時間がかかります。株価帯フィルターで絞り込みを推奨します。")
+    st.warning(f"⚠️ {ticker_count}銘柄は時間がかかります。絞り込みを推奨します。")
 
+st.markdown("---")
+
+# ===== スクリーニング条件 =====
+st.markdown("### ⚙️ スクリーニング条件")
+
+col1, col2 = st.columns(2)
+with col1:
+    rsi_max = st.slider("RSI上限（以下を抽出）", 10, 70, 30)
+    gc_days_max = st.slider("GC予測まで何営業日以内？", 5, 30, 15)
+with col2:
+    price_min = st.number_input("最低株価（円）", value=0, step=100)
+    price_max = st.number_input("最高株価（円）", value=100000, step=1000)
+
+col3, col4 = st.columns(2)
+with col3:
+    gc_only = st.checkbox("GC予兆銘柄のみ表示", value=False)
+with col4:
+    ch_only = st.checkbox("C&H予兆銘柄のみ表示", value=False)
+
+st.markdown("---")
+
+# ===== 実行ボタン =====
 if st.button("🔍 スクリーニング実行", type="primary"):
     tickers = [t.strip() for t in tickers_input.strip().split("\n") if t.strip()]
     results = []
