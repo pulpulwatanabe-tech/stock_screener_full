@@ -149,7 +149,6 @@ jpx_df = load_jpx_tickers()
 if jpx_df is not None:
     st.sidebar.success(f"✅ JPXより{len(jpx_df)}銘柄取得済み")
 
-    # 銘柄名検索ボックス
     st.sidebar.markdown("**🔎 銘柄名で検索**")
     search_word = st.sidebar.text_input("銘柄名またはコードで検索", placeholder="例：JX金属、トヨタ、6758")
     if search_word:
@@ -165,6 +164,7 @@ if jpx_df is not None:
                     tickers_set = set(current.strip().split("\n")) if current.strip() else set()
                     tickers_set.add(row["コード"])
                     st.session_state["tickers_input"] = "\n".join(sorted(tickers_set))
+                    st.rerun()
         else:
             st.sidebar.warning("該当する銘柄が見つかりませんでした")
 
@@ -176,7 +176,7 @@ if jpx_df is not None:
         else:
             tickers_list = jpx_df[jpx_df["市場"] == selected_market]["コード"].tolist()
         st.session_state["tickers_input"] = "\n".join(tickers_list)
-        st.sidebar.success(f"{len(tickers_list)}銘柄をセットしました！")
+        st.rerun()
 else:
     st.sidebar.error("JPX銘柄リストの取得に失敗しました")
 
@@ -185,6 +185,7 @@ cols = st.sidebar.columns(2)
 for i, sector_name in enumerate(SECTORS.keys()):
     if cols[i % 2].button(sector_name, key=f"sector_{i}"):
         st.session_state["tickers_input"] = SECTORS[sector_name]
+        st.rerun()
 
 default_tickers = "7203.T\n6758.T\n9984.T\n6861.T\n8306.T\n7974.T\n6902.T\n9432.T"
 tickers_input = st.sidebar.text_area(
