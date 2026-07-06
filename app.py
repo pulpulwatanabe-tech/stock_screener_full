@@ -27,7 +27,6 @@ with st.expander("📖 見方を見る（クリックで開く）"):
 - 乖離率が小さい ＋ 縮小スピードが大きい → GCが近い有力候補
     """)
 
-# JPX全銘柄CSV取得
 @st.cache_data(ttl=60*60*24)
 def load_jpx_tickers():
     url = "https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls"
@@ -80,49 +79,31 @@ def detect_gc_sign(hist, short_window=25, long_window=75):
         return None, None, None
 
 def detect_cup_and_handle(hist):
-    """カップ＆ハンドル予兆を検出する"""
     if len(hist) < 60:
         return "-"
     try:
         close = hist["Close"].values
         n = len(close)
-
-        # カップ部分：過去60〜120日で高値→安値→高値のU字形を検出
         cup_period = close[-120:] if n >= 120 else close
         cup_len = len(cup_period)
-
         left_high = max(cup_period[:cup_len//3])
         bottom = min(cup_period[cup_len//3: 2*cup_len//3])
         right_high = max(cup_period[2*cup_len//3:])
-        current = close[-1]
-
-        # カップの深さ（20〜50%が理想）
         cup_depth = (left_high - bottom) / left_high * 100
         if not (15 <= cup_depth <= 60):
             return "-"
-
-        # 右側がカップ左高値の90%以上まで回復しているか
         recovery = right_high / left_high
         if recovery < 0.85:
             return "-"
-
-        # ハンドル部分：直近10〜20日で小さい押し目があるか
         handle_period = close[-20:]
         handle_high = max(handle_period)
         handle_low = min(handle_period)
         handle_depth = (handle_high - handle_low) / handle_high * 100
-
-        # ハンドルの深さ（5〜20%が理想）
         if not (3 <= handle_depth <= 25):
             return "-"
-
-        # 現在値がハンドル高値付近（ブレイクアウト直前）
-        near_breakout = current >= handle_high * 0.97
-
-        # 出来高が直近で減少傾向（ハンドル形成中の特徴）
+        near_breakout = close[-1] >= handle_high * 0.97
         vol = hist["Volume"].values[-20:]
         vol_trend = vol[-5:].mean() < vol[:10].mean()
-
         if near_breakout and vol_trend:
             return "◎"
         elif recovery >= 0.90 and handle_depth <= 15:
@@ -134,7 +115,6 @@ def detect_cup_and_handle(hist):
     except:
         return "-"
 
-# セクター別プリセット
 SECTORS = {
     "🔬 半導体・電子部品": "6857.T\n6920.T\n8035.T\n6146.T\n7735.T\n6526.T\n6723.T\n6981.T\n6762.T\n6976.T\n6963.T\n6971.T\n4063.T\n3436.T\n6506.T\n6594.T\n6645.T\n6806.T\n6770.T\n6724.T",
     "🏦 銀行・金融": "8306.T\n8316.T\n8411.T\n8308.T\n8309.T\n8604.T\n8601.T\n8355.T\n8354.T\n8591.T\n8593.T\n8697.T\n8725.T\n8750.T\n8766.T\n8795.T\n8630.T",
@@ -148,7 +128,6 @@ SECTORS = {
     "🎮 エンタメ・小売": "7974.T\n9766.T\n7832.T\n9697.T\n4661.T\n9602.T\n3382.T\n8267.T\n9983.T\n3092.T\n7453.T\n9843.T\n7532.T\n7564.T",
 }
 
-# サイドバー
 st.sidebar.header("⚙️ スクリーニング条件")
 rsi_max = st.sidebar.slider("RSI上限（以下を抽出）", 10, 70, 30)
 
@@ -169,6 +148,26 @@ jpx_df = load_jpx_tickers()
 
 if jpx_df is not None:
     st.sidebar.success(f"✅ JPXより{len(jpx_df)}銘柄取得済み")
+
+    # 銘柄名検索ボックス
+    st.sidebar.markdown("**🔎 銘柄名で検索**")
+    search_word = st.sidebar.text_input("銘柄名またはコードで検索", placeholder="例：JX金属、トヨタ、6758")
+    if search_word:
+        matched = jpx_df[
+            jpx_df["銘柄名"].str.contains(search_word, na=False) |
+            jpx_df["コード"].str.contains(search_word, na=False)
+        ]
+        if not matched.empty:
+            for _, row in matched.head(10).iterrows():
+                label = f"{row['コード']} {row['銘柄名']}"
+                if st.sidebar.button(label, key=f"search_{row['コード']}"):
+                    current = st.session_state.get("tickers_input", "")
+                    tickers_set = set(current.strip().split("\n")) if current.strip() else set()
+                    tickers_set.add(row["コード"])
+                    st.session_state["tickers_input"] = "\n".join(sorted(tickers_set))
+        else:
+            st.sidebar.warning("該当する銘柄が見つかりませんでした")
+
     markets = ["すべて"] + sorted(jpx_df["市場"].unique().tolist())
     selected_market = st.sidebar.selectbox("市場で絞り込み", markets)
     if st.sidebar.button("📊 選択した市場の銘柄をセット"):
@@ -181,7 +180,6 @@ if jpx_df is not None:
 else:
     st.sidebar.error("JPX銘柄リストの取得に失敗しました")
 
-# セクターボタン
 st.sidebar.markdown("**セクター別プリセット**")
 cols = st.sidebar.columns(2)
 for i, sector_name in enumerate(SECTORS.keys()):
@@ -227,18 +225,13 @@ if st.button("🔍 スクリーニング実行", type="primary"):
             volume_val = safe_float(hist["Volume"].iloc[-1])
             if rsi_val is None:
                 continue
-
-            # GC予兆
             gap_pct, slope, est_days = detect_gc_sign(hist)
             if gap_pct is not None:
                 gc_label = f"⚡ 約{est_days}日後" if est_days else "📈 接近中"
             else:
                 gc_label = "-"
-
-            # カップ＆ハンドル予兆
             ch_label = detect_cup_and_handle(hist)
 
-            # 銘柄名取得
             jp_name = None
             if jpx_df is not None:
                 row = jpx_df[jpx_df["コード"] == ticker]
